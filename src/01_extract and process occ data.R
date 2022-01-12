@@ -20,10 +20,12 @@ library(tidyverse)
 ## ________________________________________________________________________
 
 print(glue("PROCESSING: {sppselect}"))
-walk(.x = c("helper functions/check_synonyms.R", 
+
+walk(.x = c("helper functions/check_synonyms.R",
             "helper functions/check_bat_spp.R",
             "helper functions/check_subspp.R"),
      .f = source)
+
 (is_bat <- check_bat_spp(sppselect))
 (is_subspp <- check_subspp(sppselect))
 
@@ -54,17 +56,17 @@ mammal_db <- tbl(con, "rldata")
 
 ## Species: Perform query and check header (doesn't pull data)
 if(is_subspp){
-  
+
   query <- mammal_db %>%
     select(genus, specificEpithet, infraspecificEpithet, everything()) %>%
     filter(str_c(genus, specificEpithet, infraspecificEpithet, sep = " ") %in% spp_qry)
-  
+
 } else if (!is_subspp){
-  
+
   query <- mammal_db %>%
     select(scientificName, everything()) %>%
     filter(scientificName %in% spp_qry)
-  
+
 }
 
 ## Pull data from query
@@ -145,7 +147,7 @@ occ_data <- occ_data_all %>%
     occstatus_include == "yes" &
     georef_include == "yes") %>%
   mutate_at(vars(decimalLongitude, decimalLatitude), as.numeric) %>%
-  filter(!is.na(decimalLatitude) | !is.na(decimalLongitude)) %>% 
+  filter(!is.na(decimalLatitude) | !is.na(decimalLongitude)) %>%
   filter(!Coords_source %in% "QDS")
 
 ## Remove erroneous adhoc records (based on visual map plotting)
@@ -179,14 +181,14 @@ glimpse(occ_data)
 ## Import RSA shapefile
 latlongCRS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 za <- st_read("data input/RSA_fixed.shp", crs = latlongCRS)
-za_buff_uni <- st_union(st_buffer(za, 0.01)) %>% 
+za_buff_uni <- st_union(st_buffer(za, 0.01)) %>%
   st_make_valid()
 
 ## Filter columns
 occ_data <- occ_data %>%
   dplyr::select(
     occurrence_id, order, genus, scientific_name, decimal_latitude, decimal_longitude,
-    year, month, day, basis_of_record, tali_id, country, state_province, 
+    year, month, day, basis_of_record, tali_id, country, state_province,
     georeference_verification_status, order:identification_remarks,
     data_platform, recorded_by
   ) %>%
@@ -218,7 +220,7 @@ occ_data_locerr <- occ_data %>%
 source("helper functions/check_occ_QDS_IUCN.R")
 
 if (is_bat) {
-  
+
   iucn_shp <- glue("data input/IUCN range - bats/{sppselect}/{sppselect}.shp")
 
   iucn <- st_read(iucn_shp, crs = latlongCRS) %>%
@@ -230,9 +232,9 @@ if (is_bat) {
   )
 
   qds_iucn_results <- check_occ_QDS_IUCN(iucn, occ_data_sf)
-  
+
 } else if (!is_bat) {
-  
+
   qds_dir <- glue("data input/QDS files/{sppselect}")
   qds_shps <- list.files(qds_dir, pattern = "QDS", full.names = TRUE)
   qds_shps <- qds_shps[str_detect(qds_shps, ".shp$")]
