@@ -1,3 +1,5 @@
+# renv::init()
+
 # Step 1: select focal species --------------------------------------------
 
 # sppselect <- "Amblysomus corriae"
@@ -75,6 +77,32 @@ for(i in 10:length(bat_list)){
 
 }
 
+
+# Render Rmd file and rename with spppselect -------------------------
+
+## Set species
+bat_list <- c("Cistugo seabrae", "Kerivoula argentata", "Miniopterus inflatus", "Nycteris woodi",
+              "Otomops martiensseni", "Rhinolophus blasii", "Rhinolophus denti", "Rhinolophus smithersi",
+              "Scotoecus albofuscus", "Scotophilus nigrita", "Taphozous perforatus")
+
+(sppselect <- bat_list[4])
+
+## Render Rmd
+rmarkdown::render(input = "bat_summaries.Rmd",
+                  output_format = "html_document",
+                  output_dir = glue::glue("data output/rmarkdown files"))
+
+## Define file names
+original <- glue::glue("data output/rmarkdown files/bat_summaries.html")
+new <- glue::glue("data output/rmarkdown files/Data summary {sppselect}.html")
+
+# Remove any previous version of species file first
+file.remove(new)
+
+## Rename file
+file.rename(from = original, to = new)
+
+rm(list = ls())
 
 # Species issues ----------------------------------------------------------
 
