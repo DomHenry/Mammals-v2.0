@@ -46,4 +46,5 @@ list.files("data input/Queries")
 list.files("data output")
 ```
 
-    ## [1] "sdm BART results"    "sdm data processing" "temp_bck_dir"
+    ## [1] "rmarkdown files"     "sdm BART results"    "sdm data processing"
+    ## [4] "temp_bck_dir"
