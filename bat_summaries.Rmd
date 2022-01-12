@@ -1,0 +1,119 @@
+---
+title: "Bat species summary"
+author: "Dominic Henry"
+date: "11/01/2022"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE,
+                      error = FALSE,
+                      fig.width = 7,
+                      fig.height = 7)
+
+```
+
+```{r loadpackages}
+library(tidyverse)
+library(glue)
+```
+
+
+```{r}
+file_dir <- glue("data output/sdm data processing/{sppselect}")
+```
+
+
+# Occurrence maps
+
+## National extent with inset 
+
+```{r}
+# use to change size -- out.width = "700px"
+knitr::include_graphics(glue("{file_dir}/occ_map_inset.jpg"))
+```
+
+## Decadal points 
+
+```{r}
+# use to change size -- out.width = "700px"
+knitr::include_graphics(glue("{file_dir}/occ_map_decadal.jpg"))
+```
+
+## National extent with IUCN range
+
+```{r}
+# use to change size -- out.width = "700px"
+knitr::include_graphics(glue("{file_dir}/occ_map.jpg"))
+```
+
+
+# Occurrence record frequencies 
+
+## All points
+
+```{r}
+# use to change size -- out.width = "700px"
+knitr::include_graphics(glue("{file_dir}/occ_frequency_date_all_{sppselect}.jpg"))
+```
+
+## Post-1980 points 
+
+```{r}
+# use to change size -- out.width = "700px"
+knitr::include_graphics(glue("{file_dir}/occ_frequency_date_1980_{sppselect}.jpg"))
+```
+
+# Occurrence data
+
+## Cleaned data
+
+If needed, use the buttons below to download or copy the data
+
+```{r}
+occ_data <- read_csv(glue("{file_dir}/occurrence_clean_{sppselect}.csv"))
+
+# https://rstudio.github.io/DT/options.html
+
+DT::datatable(occ_data, class = 'cell-border stripe', 
+              extensions = 'Buttons',
+              options = list(dom = 'Bfrtip', scrollX = '300px', pageLength = 5, 
+                             buttons = c('copy', 'csv', 'excel')))
+
+```
+
+## Raw data
+
+If needed, use the buttons below to download or copy the data
+
+```{r}
+occ_data_raw <- read_csv(glue("{file_dir}/occurrence_raw_{sppselect}.csv"))
+
+DT::datatable(occ_data_raw, class = 'cell-border stripe', 
+              extensions = 'Buttons',
+              options = list(dom = 'Bfrtip', scrollX = '300px', pageLength = 5, 
+                             buttons = c('copy', 'csv', 'excel')))
+
+```
+
+# Shapefiles
+
+Click the link below to download a zip folder of the species shapefile  
+Note that the files are located within the following folder path: `data output/sdm data processing/species name`
+
+```{r}
+shp_files <- list.files(glue("data output/sdm data processing/{sppselect}/"), pattern = "occ_records_full",
+                        full.names = TRUE)
+
+xfun::embed_files(shp_files, 
+                 # name = xfun::with_ext(basename(shp_files[1]), ".zip"), 
+                  text = glue("Points shapefile {sppselect}") )
+
+```
+
