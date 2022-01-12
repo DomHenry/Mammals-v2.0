@@ -40,10 +40,10 @@ plot(envstack)
 # Extract PB data and create input dataframe ------------------------------
 latlongCRS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 
-op <- occ_points %>% 
-  sf::st_transform(crs = latlongCRS) 
+op <- occ_points %>%
+  sf::st_transform(crs = latlongCRS)
 
-op <- as.data.frame(as(op, "Spatial")) %>% 
+op <- as.data.frame(as(op, "Spatial")) %>%
   select(coords.x1, coords.x2, occurrence_id , scientific_name)
 
 op_thin <- spThin::thin(loc.data = op,
@@ -58,10 +58,10 @@ op_thin <- spThin::thin(loc.data = op,
 
 keep_ref <- as.numeric(row.names(op_thin[[1]]))
 
-occ_points <- occ_points %>% 
-  filter(row_number() %in% keep_ref) 
+occ_points <- occ_points %>%
+  filter(row_number() %in% keep_ref)
 
-occ_points %>% 
+occ_points %>%
   sf::st_write(glue("{BART_dir}/occ_points_thinned.shp"), delete_dsn = TRUE)
 
 PB_data <- occ_points %>%
@@ -81,7 +81,7 @@ occ <- as(PB_data, 'Spatial')
 occ.df <- cbind(PB_data$Species,
                 raster::extract(envstack, occ))
 
-occ.df <- as.data.frame(occ.df) 
+occ.df <- as.data.frame(occ.df)
 colnames(occ.df)[1] <- "Observed"
 head(occ.df)
 
@@ -117,11 +117,11 @@ dev.off()
 
 ## Custom variable selection for spp ##
 if(sppselect == "spp x"){
-  
+
   step.model <- names(occ.df)[c(2:8,11,13)]
-  
+
 } else {
-  
+
   step.model <- variable.step(x.data=occ.df[,-1],
                               y.data=occ.df[,'Observed'],
                               quiet=TRUE)
@@ -148,27 +148,29 @@ latlongCRS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 
 x <- glue("data input/Queries/SDM_query_{sppselect}.xlsx")
 
-env_layer_list <- read_xlsx(x, sheet = "env_var_list") %>% 
+env_layer_list <- read_xlsx(x, sheet = "env_var_list") %>%
   filter(.data[[glue("select - {sppselect}")]] == 1) %>% # .data[[]] is tidy eval for a string input
-  dplyr::select(folder,layer) 
+  dplyr::select(folder,layer)
 
-envpaths <- enframe(step.model) %>% 
-  rename(layer = value) %>% 
-  mutate(layer = glue("{layer}.tif")) %>% 
-  left_join(env_layer_list) %>% 
-  mutate(path = glue("C:/Users/DominicH/Documents/GIS data/Environmental data 30s reduced/{folder}/{layer}")) %>% 
-  dplyr::select(path) %>% 
+envpaths <- enframe(step.model) %>%
+  rename(layer = value) %>%
+  mutate(layer = glue("{layer}.tif")) %>%
+  left_join(env_layer_list) %>%
+  mutate(path = glue("C:/Users/DominicH/Documents/GIS data/Environmental data 30s reduced/{folder}/{layer}")) %>%
+  dplyr::select(path) %>%
   pull
 
 envpaths
 
-za <- st_read("data input/RSA_fixed.shp",crs = latlongCRS) %>% 
+za <- st_read("data input/RSA_fixed.shp",crs = latlongCRS) %>%
   st_transform(aeaproj)
 
 projenv_aea <- function(x){
   projection(x) <- latlongCRS
   projectRaster(x, crs=aeaproj)
 }
+
+## TODO Add options for provincial predictions
 
 envstack_rsa <- readAll(stack(envpaths))
 envstack_rsa <- stack(map(envstack_rsa@layers,projenv_aea))
