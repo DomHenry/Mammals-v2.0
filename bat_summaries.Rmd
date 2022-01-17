@@ -1,6 +1,6 @@
 ---
 title: "Bat species summary"
-author: "Dominic Henry"
+author: "EWT - Dominic Henry & Oliver Cowan"
 date: "11/01/2022"
 output:
   html_document:
@@ -29,6 +29,8 @@ library(glue)
 file_dir <- glue("data output/sdm data processing/{sppselect}")
 ```
 
+
+Note that the data presented in the plots below have been filtered according to a number of criteria. Extracting the data directly from the EWT 2016 Mammal Red List occurrence database we first removed records that had high georeferencing uncertainty, those which had uncertain ID from expert comments, and those the occurred outside of South Africa (either because of lat/long errors or legitimate records occurring in other southern African countries). We have however included the raw data without any filters further down in the document. 
 
 # Occurrence maps
 
@@ -105,7 +107,7 @@ DT::datatable(occ_data_raw, class = 'cell-border stripe',
 # Shapefiles
 
 Click the link below to download a zip folder of the species shapefile  
-Note that the files are located within the following folder path: `data output/sdm data processing/species name`
+Note that the files are located within the following folder path within the zip file: `data output/sdm data processing/species name`
 
 ```{r}
 shp_files <- list.files(glue("data output/sdm data processing/{sppselect}/"), pattern = "occ_records_full",
