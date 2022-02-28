@@ -15,6 +15,13 @@ library(readxl)
 library(sf)
 library(raster)
 library(tidyverse)
+
+conflicted::conflict_prefer("select", "dplyr", "raster")
+conflicted::conflict_prefer("filter", "dplyr", "stats")
+conflicted::conflict_prefer("levelplot", "rasterVis", "lattice")
+conflicted::conflict_prefer("partial", "embarcadero", "purrr")
+conflicted::conflict_scout()
+
 ## ________________________________________________________________________
 
 start <- Sys.time()

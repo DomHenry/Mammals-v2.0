@@ -17,6 +17,10 @@ library(raster)
 library(rgeos)
 library(sp)
 library(tidyverse)
+
+conflicted::conflict_prefer("select", "dplyr", "raster")
+conflicted::conflict_scout()
+
 ## ________________________________________________________________________
 
 print(glue("PROCESSING: {sppselect}"))

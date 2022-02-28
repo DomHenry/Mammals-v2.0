@@ -15,6 +15,11 @@ library(readxl)
 library(raster)
 library(tidyverse)
 library(glue)
+
+conflicted::conflict_prefer("filter", "dplyr", "stats")
+conflicted::conflict_prefer("select", "dplyr", "raster")
+conflicted::conflict_scout()
+
 ## ________________________________________________________________________
 
 start <- Sys.time()
@@ -93,7 +98,7 @@ if (geom_choice == "Buffer") {
     occ_buffer <- st_intersection(st_buffer(st_convex_hull(st_union(occ_points)), buff_latlong), za)
   }
 } else if (geom_choice == "RSA"){
-  
+
   occ_buffer <- za
 
 }
@@ -103,28 +108,28 @@ if (geom_choice == "Buffer") {
 n_points <- as.numeric(query$Value[which(query$Input == "Background points")])
 
 ## Randomly sample points within buffer (returns sfc object - use st_sf() to convert to sf)
-bck_points <- st_sample(occ_buffer, n_points) %>% 
+bck_points <- st_sample(occ_buffer, n_points) %>%
   st_sf()
 
 ## Write temporary files used in Python processing
-bck_points %>% 
-  st_transform(crs = latlongCRS) %>% 
+bck_points %>%
+  st_transform(crs = latlongCRS) %>%
   st_write("data output/temp_bck_dir/bck_points.shp", delete_layer = TRUE)
 
-occ_buffer %>% 
-  st_transform(crs = latlongCRS) %>% 
+occ_buffer %>%
+  st_transform(crs = latlongCRS) %>%
   st_write("data output/temp_bck_dir/occ_buffer.shp", delete_layer = TRUE)
 
-occ_points %>% 
-  st_transform(crs = latlongCRS) %>% 
+occ_points %>%
+  st_transform(crs = latlongCRS) %>%
   st_write("data output/temp_bck_dir/occ_points.shp", delete_layer = TRUE)
 
 ## Run python background point processing
-system('"C:/Program Files/ArcGIS/Pro/bin/Python/envs/arcgispro-py3/python" src/00_bck_points_processing.py', 
+system('"C:/Program Files/ArcGIS/Pro/bin/Python/envs/arcgispro-py3/python" src/00_bck_points_processing.py',
        intern = TRUE)
 
 ## Read in adjusted background points
-bck_points <- st_read("data output/temp_bck_dir/bck_points_updated.shp") %>% 
+bck_points <- st_read("data output/temp_bck_dir/bck_points_updated.shp") %>%
   st_transform(aeaproj)
 
 ## Read in RSA grid
@@ -138,12 +143,12 @@ if (geo_proj == "Yes") {
 bck_points <- mutate(bck_points, ID = str_c("B", 1:nrow(bck_points)))
 
 ## Assign a polygonID to each background point
-bck_grid <- st_join(bck_points, zagrid_sf, join = st_intersects, left = FALSE) 
+bck_grid <- st_join(bck_points, zagrid_sf, join = st_intersects, left = FALSE)
 
 ## Group by polygons and keep first point (i.e. remove duplicate points)
 bck_points <- bck_grid %>% #
-  group_by(ID) %>% 
-  filter(row_number() == 1) %>% 
+  group_by(ID) %>%
+  filter(row_number() == 1) %>%
   ungroup
 
 # Occurrence and BP plot checks --------------------------------------------
@@ -165,15 +170,15 @@ p1 <- ggplot() +
                        {nrow(occ_points)} occurrence points
                        {nrow(bck_points)} background points"))
 
-ggsave(glue("{sdm_dir}/{sppselect}/occ_buffer_{sppselect}.jpg"), 
+ggsave(glue("{sdm_dir}/{sppselect}/occ_buffer_{sppselect}.jpg"),
        plot = p1, width = 12, height = 9)
 
 # Environmental data ------------------------------------------------------
-env_layer_list <- read_xlsx(x, sheet = "env_var_list") %>% 
+env_layer_list <- read_xlsx(x, sheet = "env_var_list") %>%
   filter(.data[[glue("select - {sppselect}")]] == 1) %>% # .data[[]] is tidy eval for a string input
-  dplyr::select(folder,layer) %>% 
-  mutate(path = glue("C:/Users/DominicH/Documents/GIS data/Environmental data 30s reduced/{folder}/{layer}")) %>% 
-  dplyr::select(path) %>% 
+  dplyr::select(folder,layer) %>%
+  mutate(path = glue("C:/Users/DominicH/Documents/GIS data/Environmental data 30s reduced/{folder}/{layer}")) %>%
+  dplyr::select(path) %>%
   pull
 
 env_layer_list
@@ -206,9 +211,9 @@ if (geo_proj == "Yes") {
 # Collinearity of environemental predictors -------------------------------
 cormatrix <- raster::layerStats(envstack, "pearson", na.rm = TRUE)
 
-cormatrix <- as_tibble(cormatrix$`pearson correlation coefficient`) %>% 
-  mutate(var = colnames(cormatrix$`pearson correlation coefficient`)) %>% 
-  select(var, everything()) %>% 
+cormatrix <- as_tibble(cormatrix$`pearson correlation coefficient`) %>%
+  mutate(var = colnames(cormatrix$`pearson correlation coefficient`)) %>%
+  select(var, everything()) %>%
   write_csv(glue("{sdm_dir}/{sppselect}/raster_corr_matrix.csv"))
 
 var_reduced <- usdm::vifcor(envstack, th=0.6) # alternative: th=10
@@ -217,9 +222,9 @@ var_reduced@results$Variables
 ## Exclude the collinear variables that were identified in the previous step
 envstack <- usdm::exclude(envstack,var_reduced)
 
-usdm::vif(envstack) %>% 
-  as_tibble %>% 
-  write_csv(glue("{sdm_dir}/{sppselect}/vif_check.csv")) %>% 
+usdm::vif(envstack) %>%
+  as_tibble %>%
+  write_csv(glue("{sdm_dir}/{sppselect}/vif_check.csv")) %>%
   print(n = 20)
 
 # Raster predictor plots --------------------------------------------------
@@ -237,12 +242,12 @@ copyto <- glue("{sdm_dir}/{sppselect}/")
 file.copy(copyfrom, copyto, recursive=TRUE)
 
 # Write occurence points to shapefile -------------------------------------
-occ_points %>% 
+occ_points %>%
   st_write(glue("{sdm_dir}/{sppselect}/occ_points_{sppselect}.shp"),
            delete_dsn=TRUE)
 
 # Write workspace ---------------------------------------------------------
-save(list = c("occ_points","bck_points","envstack"), 
+save(list = c("occ_points","bck_points","envstack"),
      file = glue("{sdm_dir}/{sppselect}/sdm_input_data.RData"))
 
 # Timing ------------------------------------------------------------------
