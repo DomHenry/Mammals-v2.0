@@ -19,6 +19,7 @@ library(sp)
 library(tidyverse)
 
 conflicted::conflict_prefer("select", "dplyr", "raster")
+conflicted::conflict_prefer("filter", "dplyr", "stats")
 conflicted::conflict_scout()
 
 ## ________________________________________________________________________
