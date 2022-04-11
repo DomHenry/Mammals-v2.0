@@ -1,9 +1,9 @@
 ## ________________________________________________________________________
 
-## Title:
-## Purpose:
-## Author:
-## Date:
+## Title:   Prepare SDM inputs
+## Purpose: Format occurrence and environmental data for SDM model input
+## Author:  Dominic Henry
+## Date:    11/04/2022
 
 ## Libraries
 library(lubridate)
@@ -15,6 +15,7 @@ library(readxl)
 library(raster)
 library(tidyverse)
 library(glue)
+library(SDMutils)
 
 conflicted::conflict_prefer("filter", "dplyr", "stats")
 conflicted::conflict_prefer("select", "dplyr", "raster")
@@ -177,7 +178,7 @@ ggsave(glue("{sdm_dir}/{sppselect}/occ_buffer_{sppselect}.jpg"),
 env_layer_list <- read_xlsx(x, sheet = "env_var_list") %>%
   filter(.data[[glue("select - {sppselect}")]] == 1) %>% # .data[[]] is tidy eval for a string input
   dplyr::select(folder,layer) %>%
-  mutate(path = glue("C:/Users/DominicH/Documents/GIS data/Environmental data 30s reduced/{folder}/{layer}")) %>%
+  mutate(path = glue("{envlayers_dir}/{folder}/{layer}")) %>%
   dplyr::select(path) %>%
   pull
 

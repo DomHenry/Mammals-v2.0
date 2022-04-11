@@ -1,9 +1,9 @@
 ## ________________________________________________________________________
 
-## Title:
-## Purpose:
-## Author:
-## Date:
+## Title:    Extract and process occ data
+## Purpose:  Run first step of modelling process to extract mammal data
+## Author:   Dominic Henry
+## Date:     11/04/2022
 
 ## Libraries
 library(DBI)

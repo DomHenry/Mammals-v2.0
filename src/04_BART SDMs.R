@@ -15,6 +15,7 @@ library(readxl)
 library(sf)
 library(raster)
 library(tidyverse)
+library(SDMutils)
 
 conflicted::conflict_prefer("select", "dplyr", "raster")
 conflicted::conflict_prefer("filter", "dplyr", "stats")
@@ -92,17 +93,14 @@ occ.df <- as.data.frame(occ.df)
 colnames(occ.df)[1] <- "Observed"
 head(occ.df)
 
-
-##TODO LOOK AT THE EFFECTS OF THE NUMBER OF BACKGROUND POINTS
-
 ## Correct for small random sample of occurrence/background points
 num_bck <- num_occ_points
 
 if(num_bck < 30){
-  num_bck_small <- 40
+  num_bck_small <- 80
   keepabs <- sample(2000:8500, num_bck_small)
 } else {
-  keepabs <- sample(2000:8500, num_bck)
+  keepabs <- sample(2000:8500, num_bck*3)
 }
 
 occ.df <- occ.df[c(1:num_occ_points,keepabs),]
@@ -163,7 +161,7 @@ envpaths <- enframe(step.model) %>%
   rename(layer = value) %>%
   mutate(layer = glue("{layer}.tif")) %>%
   left_join(env_layer_list) %>%
-  mutate(path = glue("C:/Users/DominicH/Documents/GIS data/Environmental data 30s reduced/{folder}/{layer}")) %>%
+  mutate(path = glue("{envlayers_dir}/{folder}/{layer}")) %>%
   dplyr::select(path) %>%
   pull
 
@@ -172,21 +170,35 @@ envpaths
 za <- st_read("data input/RSA_fixed.shp",crs = latlongCRS) %>%
   st_transform(aeaproj)
 
+zasub <- za %>%
+  filter(HRName %in% prov_list)
+
+zasub$PROVINCE
+
+zasub <- as(zasub, "Spatial")
+
+prov_list <- read_xlsx(x, sheet = "province select") %>%
+  filter(selection == 1) %>%
+  pull(prov)
+
 projenv_aea <- function(x){
   projection(x) <- latlongCRS
   projectRaster(x, crs=aeaproj)
 }
 
-## TODO Add options for provincial predictions
-
 envstack_rsa <- readAll(stack(envpaths))
 envstack_rsa <- stack(map(envstack_rsa@layers,projenv_aea))
 envstack_rsa <- stack(envstack_rsa)
 
-# Run model prediction with 95% CIs ---------------------------------------
+envstack_prov <- mask(envstack_rsa, zasub)
+envstack_prov <- crop(envstack_prov,zasub)
+envstack_prov <- stack(envstack_prov)
+plot(envstack_prov)
 
-map <- predict2.bart(sdm,
-  envstack_rsa,
+# Run model prediction with 95% CIs ---------------------------------------
+map <- predict2.bart(
+  sdm,
+  envstack_prov,
   quantiles = c(0.025, 0.975),
   quiet = FALSE,
   splitby = 10
@@ -194,41 +206,12 @@ map <- predict2.bart(sdm,
 
 # Map plotting ------------------------------------------------------------
 
-##TODO Add PNG SDM plot with QDS cells overlaid
-
 ## Mean SDM probability
 maptheme_mean <- rasterTheme(region = rev(brewer.pal(11, "Spectral")),
                         layout.widths = list(right.padding = 10),
                         axis.line = list(col = "transparent"),
                         tick = list(col = 'transparent'))
 
-p1 <- levelplot(map[[1]],
-          maxpixels = 1e10,
-          margin = FALSE,
-          par.settings = maptheme_mean,
-          scales = list(x = list(draw = FALSE),
-                        y = list(draw = FALSE)),
-          zlim = c(0, 1)) +
-  layer(sp.points(occurence_points, pch=20, col="black", cex = 0.8),
-        data = list(occurence_points=SpatialPoints(occ[1:num_occ_points,])))
-
-pdf(glue("{BART_dir}/SDM_mean_probability.pdf"), width = 16, height = 9)
-print(p1)
-grid::grid.text('Probability of presence',
-                rot = 90,
-                y = unit(0.5, "npc"),
-                x = unit(0.925, "npc"),
-                gp = grid::gpar(fontsize = 15))
-dev.off()
-
-png(glue("{BART_dir}/SDM_mean_probability.png"), width = 2800, height = 2000)
-print(p1)
-grid::grid.text('Probability of presence',
-                rot = 90,
-                y = unit(0.5, "npc"),
-                x = unit(0.925, "npc"),
-                gp = grid::gpar(fontsize = 15))
-dev.off()
 
 ## Posterior width
 maptheme_ci <- rasterTheme(region = brewer.pal(9, "Blues"),
@@ -236,84 +219,7 @@ maptheme_ci <- rasterTheme(region = brewer.pal(9, "Blues"),
                         axis.line = list(col = "transparent"),
                         tick = list(col = 'transparent'))
 
-
-p2 <- levelplot(map[[3]] - map[[2]],
-                maxpixels = 1e10,
-                margin = FALSE,
-                par.settings = maptheme_ci,
-                scales = list(x = list(draw = FALSE),
-                              y = list(draw = FALSE)),
-                zlim = c(0, 1))
-
-pdf(glue("{BART_dir}/SDM_posterior_width.pdf"), width = 16, height = 9)
-print(p2)
-grid::grid.text('Posterior width',
-                rot = 90,
-                y = unit(0.5, "npc"),
-                x = unit(0.925, "npc"),
-                gp = grid::gpar(fontsize = 15))
-dev.off()
-
-
-png(glue("{BART_dir}/SDM_posterior_width.png"), width = 2800, height = 2000)
-print(p2)
-grid::grid.text('Posterior width',
-                rot = 90,
-                y = unit(0.5, "npc"),
-                x = unit(0.925, "npc"),
-                gp = grid::gpar(fontsize = 15))
-dev.off()
-
-## Four measure SDM plots
-pdf(glue("{BART_dir}/SDM_four_panel_probability.pdf"), width = 16, height = 9)
-par(mfrow=c(2,2))
-par(mar=c(2,1,2,5))
-plot(map[[1]], main = 'Posterior mean',
-     box=F, axes=F)
-plot(map[[2]], main = 'Lower 95% CI bound',
-     box=F, axes=F)
-plot(map[[3]], main = 'Upper 95% CI bound',
-     box=F, axes=F)
-plot(map[[3]]-map[[2]], main = 'Credible interval width',
-     box=F, axes=F)
-dev.off()
-
-## Binary predictions
-pdf(glue("{BART_dir}/SDM_four_panel_binary.pdf"), width = 16, height = 9)
-par(mfrow=c(2,2))
-plot(map[[1]] > tss_threshold, main = 'Posterior mean',
-     box=F, axes=F)
-plot(map[[2]] > tss_threshold, main = 'Lower 95% CI bound',
-     box=F, axes=F)
-plot(map[[3]] > tss_threshold, main = 'Upper 95% CI bound',
-     box=F, axes=F)
-quant <- quantile(values(map[[3]] - map[[2]]),
-                  0.75,
-                  na.rm = TRUE)
-plot((map[[3]] - map[[2]]) > quant,
-     box = FALSE,
-     axes = FALSE,
-     main = "Highest uncertainty zones",
-     axis.args=list(at=pretty(0:1), labels=pretty(0:1)),
-     legend.args=list(text='', side=2, line=1.3)
-)
-dev.off()
-
-
-## Mean binary
-pdf(glue("{BART_dir}/SDM_mean_binary.pdf"), width = 16, height = 9)
-par(mfrow = c(1,1))
-plot(map[[1]] > tss_threshold, main='Predicted presence',
-     box=F, axes=F)
-points(points(occ[1:num_occ_points,], col = "blue", pch = 20))
-dev.off()
-
-png(glue("{BART_dir}/SDM_mean_binary.png"), width = 2800, height = 2000)
-par(mfrow = c(1,1))
-plot(map[[1]] > tss_threshold, main='Predicted presence',
-     box=F, axes=F)
-points(points(occ[1:num_occ_points,], col = "blue", pch = 20, cex = 3.5))
-dev.off()
+SDMutils::write_bart_plots(data = map, mean_theme = maptheme_mean, ci_theme = maptheme_ci)
 
 
 # Variable importance -----------------------------------------------------
@@ -348,33 +254,9 @@ plot(spa)
 dev.off()
 
 # Write rasters -----------------------------------------------------------
-writeRaster(map[[1]],
-            glue("{BART_dir}/SDM_prob_mean{sppselect}.tif"),
-            format = "GTiff",overwrite = TRUE)
 
-writeRaster(map[[2]],
-            glue("{BART_dir}/SDM_prob_lower{sppselect}.tif"),
-            format = "GTiff",overwrite = TRUE)
-
-writeRaster(map[[3]],
-            glue("{BART_dir}/SDM_prob_upper{sppselect}.tif"),
-            format = "GTiff",overwrite = TRUE)
-
-writeRaster(map[[1]] > tss_threshold,
-            glue("{BART_dir}/SDM_bin_mean{sppselect}.tif"),
-            format = "GTiff",overwrite = TRUE)
-
-writeRaster(map[[2]] > tss_threshold,
-            glue("{BART_dir}/SDM_bin_lower{sppselect}.tif"),
-            format = "GTiff",overwrite = TRUE)
-
-writeRaster(map[[3]] > tss_threshold,
-            glue("{BART_dir}/SDM_bin_upper{sppselect}.tif"),
-            format = "GTiff",overwrite = TRUE)
-
-writeRaster(map[[3]]- map[[2]],
-            glue("{BART_dir}/SDM_cred_int_width{sppselect}.tif"),
-            format = "GTiff",overwrite = TRUE)
+# Undeclared variables: BART_dir, sppselect, tss_threshold
+SDMutils::write_bart_rasters(data = map)
 
 
 # Write BART objects ------------------------------------------------------
