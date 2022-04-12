@@ -170,16 +170,16 @@ envpaths
 za <- st_read("data input/RSA_fixed.shp",crs = latlongCRS) %>%
   st_transform(aeaproj)
 
+prov_list <- read_xlsx(x, sheet = "province select") %>%
+  filter(selection == 1) %>%
+  pull(prov)
+
 zasub <- za %>%
   filter(HRName %in% prov_list)
 
 zasub$PROVINCE
 
 zasub <- as(zasub, "Spatial")
-
-prov_list <- read_xlsx(x, sheet = "province select") %>%
-  filter(selection == 1) %>%
-  pull(prov)
 
 projenv_aea <- function(x){
   projection(x) <- latlongCRS
@@ -196,6 +196,9 @@ envstack_prov <- stack(envstack_prov)
 plot(envstack_prov)
 
 # Run model prediction with 95% CIs ---------------------------------------
+
+## If error occurs change splitby argument to something like 7,8,9
+
 map <- predict2.bart(
   sdm,
   envstack_prov,
